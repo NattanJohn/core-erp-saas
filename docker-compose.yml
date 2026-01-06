@@ -1,0 +1,35 @@
+version: '3.8'
+services:
+  # Banco de Dados Principal
+  postgres:
+    image: postgres:15
+    container_name: erp-db
+    restart: always
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: core_erp
+    ports:
+      - "5432:5432"
+
+  # Engine do Hasura
+  graphql-engine:
+    image: hasura/graphql-engine:v2.33.0
+    container_name: erp-hasura
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    environment:
+      # Link com o banco acima
+      HASURA_GRAPHQL_METADATA_DATABASE_URL: postgres://postgres:postgrespassword@postgres:5432/core_erp
+      HASURA_GRAPHQL_DATABASE_URL: postgres://postgres:postgrespassword@postgres:5432/core_erp
+      # Configurações de acesso
+      HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
+      HASURA_GRAPHQL_DEV_MODE: "true"
+      HASURA_GRAPHQL_ADMIN_SECRET: myadminsecret
+      HASURA_GRAPHQL_UNAUTHORIZED_ROLE: anonymous
+
+volumes:
+  db_data:

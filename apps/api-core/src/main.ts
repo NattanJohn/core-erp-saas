@@ -11,6 +11,7 @@ async function bootstrap() {
     .setDescription('Documentação das rotas do CoreERP SaaS')
     .setVersion('1.0')
     .addTag('tenants')
+    .addBearerAuth()
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

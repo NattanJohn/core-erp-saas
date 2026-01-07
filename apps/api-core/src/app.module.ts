@@ -4,12 +4,19 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { TenantsModule } from './modules/tenants/tenants.module';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { CustomersModule } from './modules/customers/customers.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot(),
     TypeOrmModule.forRootAsync({
-      imports: [ConfigModule, TenantsModule, UsersModule, AuthModule],
+      imports: [
+        ConfigModule,
+        TenantsModule,
+        UsersModule,
+        AuthModule,
+        CustomersModule,
+      ],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',

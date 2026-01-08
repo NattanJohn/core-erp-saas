@@ -1,12 +1,10 @@
-
-import { Controller, Get, Post, Body, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../shared/decorators/current-user.decorator';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CreateProductDto } from './dto/create-product.dto';
-import { User } from '../../users/entities/user.entity';
-
+import type { UserPayload } from '../../shared/interfaces/user-payload.interface';
 
 @ApiTags('products')
 @ApiBearerAuth()
@@ -17,25 +15,16 @@ export class ProductsController {
 
   @Post()
   @ApiOperation({ summary: 'Cria um novo produto vinculado a uma categoria' })
-  @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
-  async create(
+  create(
     @Body() createProductDto: CreateProductDto,
-    @CurrentUser() user: User,
+    @CurrentUser() user: UserPayload,
   ) {
-    try {
-      return await this.productsService.create(createProductDto, user.tenantId);
-    } catch (error) {
-      throw error;
-    }
+    return this.productsService.create(createProductDto, user.tenantId);
   }
 
   @Get()
   @ApiOperation({ summary: 'Lista todos os produtos com suas categorias' })
-  async findAll(@CurrentUser() user: User) {
-    try {
-      return await this.productsService.findAll(user.tenantId);
-    } catch (error) {
-      throw error;
-    }
+  findAll(@CurrentUser() user: UserPayload) {
+    return this.productsService.findAll(user.tenantId);
   }
 }

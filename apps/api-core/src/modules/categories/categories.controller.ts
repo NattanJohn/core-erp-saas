@@ -4,6 +4,7 @@ import { CreateCategoryDto } from './dto/create-category.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../shared/decorators/current-user.decorator';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import type { UserPayload } from '../../shared/interfaces/user-payload.interface';
 
 @ApiTags('categories')
 @ApiBearerAuth()
@@ -16,14 +17,14 @@ export class CategoriesController {
   @ApiOperation({ summary: 'Cria uma nova categoria' })
   create(
     @Body() createCategoryDto: CreateCategoryDto,
-    @CurrentUser() user: any,
+    @CurrentUser() user: UserPayload,
   ) {
     return this.categoriesService.create(createCategoryDto, user.tenantId);
   }
 
   @Get()
   @ApiOperation({ summary: 'Lista todas as categorias da empresa' })
-  findAll(@CurrentUser() user: any) {
+  findAll(@CurrentUser() user: UserPayload) {
     return this.categoriesService.findAll(user.tenantId);
   }
 }

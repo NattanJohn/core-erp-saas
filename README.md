@@ -1,5 +1,3 @@
-# core-erp-saas
-Enterprise ERP SaaS - Next.js, NestJS, Hasura, PostgreSQL &amp; AWS.
+Enterprise ERP SaaS - Next.js, NestJS, Hasura, PostgreSQL & AWS.
 
-Repositorio para projeto de estudo
-
+Repositorio para projeto de estudo!

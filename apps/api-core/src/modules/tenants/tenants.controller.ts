@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body } from '@nestjs/common';
+import { Controller, Post, Get, Body, Delete, Param } from '@nestjs/common';
 import { TenantsService } from './tenants.service';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CreateTenantDto } from './dto/create-tenant.dto';
@@ -23,5 +23,11 @@ export class TenantsController {
   })
   findAll() {
     return this.tenantsService.findAll();
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Desativa um Tenant (Soft Delete)' })
+  remove(@Param('id') id: string) {
+    return this.tenantsService.remove(id);
   }
 }

@@ -1,4 +1,11 @@
-import { Controller, Get, Patch, Param, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Patch,
+  Param,
+  UseGuards,
+  Delete,
+} from '@nestjs/common';
 import { FinanceService } from './finance.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../shared/decorators/current-user.decorator';
@@ -22,5 +29,11 @@ export class FinanceController {
   @ApiOperation({ summary: 'Registra o pagamento de uma fatura' })
   markAsPaid(@Param('id') id: string, @CurrentUser() user: UserPayload) {
     return this.financeService.markAsPaid(id, user.tenantId);
+  }
+
+  @Delete('invoices/:id')
+  @ApiOperation({ summary: 'Remove uma fatura (Soft Delete)' })
+  remove(@Param('id') id: string, @CurrentUser() user: UserPayload) {
+    return this.financeService.remove(id, user.tenantId);
   }
 }

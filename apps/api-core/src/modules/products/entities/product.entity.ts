@@ -6,6 +6,7 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  DeleteDateColumn,
 } from 'typeorm';
 import { Category } from '../../categories/entities/category.entity';
 import { Tenant } from '../../tenants/entities/tenant.entity';
@@ -54,4 +55,7 @@ export class Product {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @DeleteDateColumn()
+  deletedAt: Date;
 }

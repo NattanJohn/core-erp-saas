@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  UseGuards,
+  Delete,
+  Param,
+} from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../shared/decorators/current-user.decorator';
@@ -26,5 +34,11 @@ export class ProductsController {
   @ApiOperation({ summary: 'Lista todos os produtos com suas categorias' })
   findAll(@CurrentUser() user: UserPayload) {
     return this.productsService.findAll(user.tenantId);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Remove um produto (Soft Delete)' })
+  remove(@Param('id') id: string, @CurrentUser() user: UserPayload) {
+    return this.productsService.remove(id, user.tenantId);
   }
 }

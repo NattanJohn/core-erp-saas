@@ -1,9 +1,18 @@
-import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  UseGuards,
+  Delete,
+  Param,
+} from '@nestjs/common';
 import { CustomersService } from './customers.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../shared/decorators/current-user.decorator';
-import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import type { UserPayload } from '../../shared/interfaces/user-payload.interface';
+import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 
 @ApiTags('customers')
 @ApiBearerAuth()
@@ -26,5 +35,11 @@ export class CustomersController {
   @Get()
   findAll(@CurrentUser() user: Record<string, any>) {
     return this.customersService.findAll(String(user.tenantId));
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Remove um cliente (Soft Delete)' })
+  remove(@Param('id') id: string, @CurrentUser() user: UserPayload) {
+    return this.customersService.remove(id, user.tenantId);
   }
 }

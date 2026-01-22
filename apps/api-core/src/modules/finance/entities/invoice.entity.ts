@@ -5,6 +5,7 @@ import {
   CreateDateColumn,
   ManyToOne,
   JoinColumn,
+  DeleteDateColumn,
 } from 'typeorm';
 import { Order } from '../../orders/entities/order.entity';
 import { Customer } from '../../customers/entities/customer.entity';
@@ -50,4 +51,7 @@ export class Invoice {
 
   @CreateDateColumn()
   createdAt: Date;
+
+  @DeleteDateColumn()
+  deletedAt: Date;
 }

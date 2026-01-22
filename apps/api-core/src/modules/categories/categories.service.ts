@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Category } from './entities/category.entity';
@@ -18,5 +18,15 @@ export class CategoriesService {
 
   findAll(tenantId: string) {
     return this.repository.find({ where: { tenantId } });
+  }
+
+  async remove(id: string, tenantId: string) {
+    const category = await this.repository.findOne({ where: { id, tenantId } });
+
+    if (!category) {
+      throw new NotFoundException('Categoria não encontrada');
+    }
+    await this.repository.softDelete(id);
+    return { message: 'Categoria removida com sucesso' };
   }
 }

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Customer } from './entities/customer.entity';
@@ -20,5 +20,18 @@ export class CustomersService {
     return this.customerRepository.find({
       where: { tenantId },
     });
+  }
+
+  async remove(id: string, tenantId: string) {
+    const customer = await this.customerRepository.findOne({
+      where: { id, tenantId },
+    });
+
+    if (!customer) {
+      throw new NotFoundException('Cliente não encontrado');
+    }
+
+    await this.customerRepository.softDelete(id);
+    return { message: 'Cliente removido com sucesso' };
   }
 }

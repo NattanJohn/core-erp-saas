@@ -1,4 +1,9 @@
-import { Injectable, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
@@ -51,5 +56,19 @@ export class UsersService {
     return this.userRepository.findOne({
       where: { email },
     });
+  }
+
+  async remove(id: string, tenantId: string, currentUserId: string) {
+    if (id === currentUserId) {
+      throw new BadRequestException(
+        'Você não pode excluir seu próprio usuário.',
+      );
+    }
+
+    const user = await this.userRepository.findOne({ where: { id, tenantId } });
+    if (!user) throw new NotFoundException('Usuário não encontrado');
+
+    await this.userRepository.softDelete(id);
+    return { message: 'Usuário removido com sucesso' };
   }
 }

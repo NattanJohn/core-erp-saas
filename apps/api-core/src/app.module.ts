@@ -9,6 +9,7 @@ import { CategoriesModule } from './modules/categories/categories.module';
 import { ProductsModule } from './modules/products/products.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { StockMovementsModule } from './modules/stock-movements/stock-movements.module';
+import { FinanceModule } from './modules/finance/finance.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { StockMovementsModule } from './modules/stock-movements/stock-movements.
         ProductsModule,
         OrdersModule,
         StockMovementsModule,
+        FinanceModule,
       ],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({

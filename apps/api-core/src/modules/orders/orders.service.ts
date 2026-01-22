@@ -86,6 +86,17 @@ export class OrdersService {
 
       const savedOrder = await queryRunner.manager.save(order);
 
+      const invoice = queryRunner.manager.create('Invoice', {
+        amount: orderTotal,
+        status: 'pending',
+        dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // Vence em 3 dias
+        orderId: savedOrder.id,
+        customerId: dto.customerId,
+        tenantId: tenantId,
+      });
+
+      await queryRunner.manager.save(invoice);
+
       // Se tudo deu certo, confirma as alterações no banco
       await queryRunner.commitTransaction();
       return savedOrder;

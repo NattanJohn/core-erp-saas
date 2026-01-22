@@ -9,6 +9,8 @@ import { Order } from './entities/order.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { Product } from '../products/entities/product.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { StockMovement } from '../stock-movements/entities/stock-movement.entity';
+import { Invoice } from '../finance/entities/invoice.entity';
 
 @Injectable()
 export class OrdersService {
@@ -116,5 +118,58 @@ export class OrdersService {
       relations: ['customer', 'items', 'items.product'],
       order: { createdAt: 'DESC' },
     });
+  }
+  async remove(id: string, tenantId: string) {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // 1. Buscar o pedido com os itens para saber o que devolver ao estoque
+      const order = await queryRunner.manager.findOne(Order, {
+        where: { id, tenantId },
+        relations: ['items'],
+      });
+
+      if (!order) {
+        throw new NotFoundException('Pedido não encontrado');
+      }
+
+      // 2. Estornar o estoque para cada item do pedido
+      for (const item of order.items) {
+        const product = await queryRunner.manager.findOne(Product, {
+          where: { id: item.productId, tenantId },
+        });
+
+        if (product) {
+          product.stock_quantity += item.quantity; // Devolve a quantidade
+          await queryRunner.manager.save(product);
+
+          // Opcional: Registrar a movimentação de estorno no stock_movements
+          const movement = queryRunner.manager.create(StockMovement, {
+            productId: product.id,
+            quantity: item.quantity,
+            type: 'in',
+            reason: `Estorno - Pedido Cancelado #${order.id}`,
+            tenantId,
+          });
+          await queryRunner.manager.save(movement);
+        }
+      }
+
+      // 3. Dar Soft Delete no Pedido
+      await queryRunner.manager.softDelete(Order, id);
+
+      // 4. Opcional: Se houver uma Invoice (Fatura) vinculada, deletar ela também
+      await queryRunner.manager.softDelete(Invoice, { orderId: id });
+
+      await queryRunner.commitTransaction();
+      return { message: 'Pedido cancelado e estoque estornado com sucesso' };
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
+    }
   }
 }

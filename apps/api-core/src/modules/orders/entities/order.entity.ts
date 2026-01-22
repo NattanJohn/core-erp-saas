@@ -7,6 +7,7 @@ import {
   ManyToOne,
   OneToMany,
   JoinColumn,
+  DeleteDateColumn,
 } from 'typeorm';
 import { Customer } from '../../customers/entities/customer.entity';
 import { Tenant } from '../../tenants/entities/tenant.entity';
@@ -46,4 +47,7 @@ export class Order {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @DeleteDateColumn()
+  deletedAt: Date;
 }

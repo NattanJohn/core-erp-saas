@@ -4,11 +4,11 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { Order } from './entities/order.entity';
 import { OrderItem } from './entities/order-item.entity';
-import { Product } from '../products/entities/product.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { Product } from '../products/entities/product.entity';
 import { StockMovement } from '../stock-movements/entities/stock-movement.entity';
 import { Invoice } from '../finance/entities/invoice.entity';
 
@@ -17,115 +17,119 @@ export class OrdersService {
   constructor(
     @InjectRepository(Order)
     private readonly orderRepository: Repository<Order>,
-    @InjectRepository(Product)
-    private readonly productRepository: Repository<Product>,
-    private dataSource: DataSource, // Injetado para gerenciar a transação
+    private readonly dataSource: DataSource,
   ) {}
 
   async create(dto: CreateOrderDto, tenantId: string) {
-    // Iniciamos o QueryRunner para gerenciar a transação manualmente
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
-      let orderTotal = 0;
-      const orderItems: OrderItem[] = [];
+      // 1. Criar a instância do pedido
+      const order = queryRunner.manager.create(Order, {
+        customerId: dto.customerId,
+        tenantId,
+        status: 'pending',
+        total: 0, // Será calculado abaixo
+      });
 
-      for (const itemDto of dto.items) {
-        // 1. Buscar produto dentro da transação
+      const savedOrder = await queryRunner.manager.save(order);
+      let totalOrderAmount = 0;
+
+      // 2. Processar itens, estoque e preços históricos
+      for (const item of dto.items) {
         const product = await queryRunner.manager.findOne(Product, {
-          where: { id: itemDto.productId, tenantId },
-          lock: { mode: 'pessimistic_write' }, // Evita que outro pedido mexa nesse produto ao mesmo tempo
+          where: { id: item.productId, tenantId },
         });
 
         if (!product) {
           throw new NotFoundException(
-            `Produto ${itemDto.productId} não encontrado`,
+            `Produto ${item.productId} não encontrado.`,
           );
         }
 
-        // 2. Verificar estoque
-        if (product.stock_quantity < itemDto.quantity) {
+        if (product.stock_quantity < item.quantity) {
           throw new BadRequestException(
-            `Estoque insuficiente para o produto ${product.name}. Disponível: ${product.stock_quantity}`,
+            `Estoque insuficiente para o produto: ${product.name}`,
           );
         }
 
-        // 3. Atualizar estoque do produto
-        product.stock_quantity -= itemDto.quantity;
-        await queryRunner.manager.save(product);
-
-        const movement = queryRunner.manager.create('StockMovement', {
-          type: 'out',
-          quantity: itemDto.quantity,
-          reason: `Venda - Pedido Gerado`,
+        // --- REFINE: Congelando o preço atual do produto no item do pedido ---
+        const orderItem = queryRunner.manager.create(OrderItem, {
+          orderId: savedOrder.id,
           productId: product.id,
-          tenantId: tenantId,
+          quantity: item.quantity,
+          unit_price: product.price, // Salva o preço do momento da venda
         });
 
+        await queryRunner.manager.save(orderItem);
+
+        // Atualiza o total acumulado do pedido
+        totalOrderAmount += Number(product.price) * item.quantity;
+
+        // 3. Baixa de estoque
+        product.stock_quantity -= item.quantity;
+        await queryRunner.manager.save(product);
+
+        // 4. Registro de movimentação de estoque
+        const movement = queryRunner.manager.create(StockMovement, {
+          productId: product.id,
+          quantity: item.quantity,
+          type: 'out',
+          reason: `Venda - Pedido #${savedOrder.id}`,
+          tenantId,
+        });
         await queryRunner.manager.save(movement);
-
-        // 4. Calcular totais
-        const itemPrice = Number(product.price);
-        orderTotal += itemPrice * itemDto.quantity;
-
-        const orderItem = new OrderItem();
-        orderItem.productId = product.id;
-        orderItem.quantity = itemDto.quantity;
-        orderItem.unit_price = itemPrice;
-        orderItems.push(orderItem);
       }
 
-      // 5. Criar e salvar o pedido
-      const order = queryRunner.manager.create(Order, {
-        customerId: dto.customerId,
-        tenantId,
-        total: orderTotal,
-        items: orderItems,
-        status: 'pending',
-      });
+      // 5. Atualizar o total final do pedido
+      savedOrder.total = totalOrderAmount;
+      await queryRunner.manager.save(savedOrder);
 
-      const savedOrder = await queryRunner.manager.save(order);
+      // 6. Gerar a Invoice (Financeiro) automaticamente
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + 3); // Vencimento em 3 dias
 
-      const invoice = queryRunner.manager.create('Invoice', {
-        amount: orderTotal,
-        status: 'pending',
-        dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // Vence em 3 dias
+      const invoice = queryRunner.manager.create(Invoice, {
         orderId: savedOrder.id,
-        customerId: dto.customerId,
-        tenantId: tenantId,
+        customerId: savedOrder.customerId,
+        amount: totalOrderAmount,
+        status: 'pending',
+        dueDate: dueDate,
+        tenantId,
       });
-
       await queryRunner.manager.save(invoice);
 
-      // Se tudo deu certo, confirma as alterações no banco
       await queryRunner.commitTransaction();
-      return savedOrder;
+
+      // Retorna o pedido completo com os itens
+      return queryRunner.manager.findOne(Order, {
+        where: { id: savedOrder.id },
+        relations: ['items', 'items.product'],
+      });
     } catch (err) {
-      // Se qualquer erro ocorrer, desfaz tudo (estoque volta ao que era)
       await queryRunner.rollbackTransaction();
       throw err;
     } finally {
-      // Importante: sempre liberar o queryRunner
       await queryRunner.release();
     }
   }
 
-  findAll(tenantId: string) {
+  async findAll(tenantId: string) {
     return this.orderRepository.find({
       where: { tenantId },
-      relations: ['customer', 'items', 'items.product'],
+      relations: ['items', 'items.product', 'customer'],
       order: { createdAt: 'DESC' },
     });
   }
+
   async remove(id: string, tenantId: string) {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
-      // 1. Buscar o pedido com os itens para saber o que devolver ao estoque
       const order = await queryRunner.manager.findOne(Order, {
         where: { id, tenantId },
         relations: ['items'],
@@ -135,17 +139,16 @@ export class OrdersService {
         throw new NotFoundException('Pedido não encontrado');
       }
 
-      // 2. Estornar o estoque para cada item do pedido
+      // Estornar estoque
       for (const item of order.items) {
         const product = await queryRunner.manager.findOne(Product, {
           where: { id: item.productId, tenantId },
         });
 
         if (product) {
-          product.stock_quantity += item.quantity; // Devolve a quantidade
+          product.stock_quantity += item.quantity;
           await queryRunner.manager.save(product);
 
-          // Opcional: Registrar a movimentação de estorno no stock_movements
           const movement = queryRunner.manager.create(StockMovement, {
             productId: product.id,
             quantity: item.quantity,
@@ -157,11 +160,8 @@ export class OrdersService {
         }
       }
 
-      // 3. Dar Soft Delete no Pedido
-      await queryRunner.manager.softDelete(Order, id);
-
-      // 4. Opcional: Se houver uma Invoice (Fatura) vinculada, deletar ela também
-      await queryRunner.manager.softDelete(Invoice, { orderId: id });
+      await queryRunner.manager.softDelete(Order, { id, tenantId });
+      await queryRunner.manager.softDelete(Invoice, { orderId: id, tenantId });
 
       await queryRunner.commitTransaction();
       return { message: 'Pedido cancelado e estoque estornado com sucesso' };

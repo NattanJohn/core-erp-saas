@@ -7,6 +7,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { CustomersModule } from './modules/customers/customers.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { ProductsModule } from './modules/products/products.module';
+import { OrdersModule } from './modules/orders/orders.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { ProductsModule } from './modules/products/products.module';
         CustomersModule,
         CategoriesModule,
         ProductsModule,
+        OrdersModule,
       ],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({

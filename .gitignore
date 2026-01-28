@@ -1,0 +1,22 @@
+# --- TERRAFORM ---
+# Ignora arquivos de estado (contêm segredos em texto claro!)
+*.tfstate
+*.tfstate.backup
+.terraform/
+*.tfvars
+*.tfvars.json
+
+# Ignora logs e arquivos temporários do Terraform
+.terraform.lock.hcl
+crash.log
+
+# --- NODE / NESTJS ---
+node_modules/
+dist/
+npm-debug.log
+.env
+.env.local
+
+# --- SISTEMA ---
+.DS_Store
+Thumbs.db

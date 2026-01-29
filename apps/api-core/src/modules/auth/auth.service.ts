@@ -14,6 +14,7 @@ import {
 } from 'amazon-cognito-identity-js';
 import { RegisterDto } from './dto/register.dto';
 import { CognitoUserAttribute } from 'amazon-cognito-identity-js';
+import { ConfirmRegistrationDto } from './dto/confirm-registration.dto';
 
 export interface LoginResponse {
   access_token: string;
@@ -147,6 +148,31 @@ export class AuthService {
           })();
         },
       );
+    });
+  }
+
+  async confirmRegistration(data: ConfirmRegistrationDto) {
+    const { email, code } = data;
+
+    const cognitoUser = new CognitoUser({
+      Username: email,
+      Pool: this.userPool,
+    });
+
+    return new Promise((resolve, reject) => {
+      cognitoUser.confirmRegistration(code, true, (err, result) => {
+        if (err) {
+          return reject(
+            new BadRequestException(
+              err.message || 'Código inválido ou expirado.',
+            ),
+          );
+        }
+        resolve({
+          message: 'E-mail confirmado com sucesso! Você já pode fazer login.',
+          result,
+        });
+      });
     });
   }
 }

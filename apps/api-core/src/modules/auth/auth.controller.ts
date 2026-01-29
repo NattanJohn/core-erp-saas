@@ -3,6 +3,7 @@ import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { ConfirmRegistrationDto } from './dto/confirm-registration.dto';
 
 export interface LoginResponse {
   access_token: string;
@@ -44,5 +45,15 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Credenciais inválidas.' })
   async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto.email, loginDto.password);
+  }
+
+  @Post('confirm')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Confirma o registro do usuário usando o código enviado por e-mail',
+  })
+  async confirm(@Body() confirmDto: ConfirmRegistrationDto) {
+    return this.authService.confirmRegistration(confirmDto);
   }
 }

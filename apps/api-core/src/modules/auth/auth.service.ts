@@ -22,7 +22,12 @@ export interface LoginResponse {
   user: {
     id: string;
     email: string;
+    name: string;
     tenantId: string;
+    tenant?: {
+      name: string;
+      slug: string;
+    };
   };
 }
 
@@ -82,6 +87,7 @@ export class AuthService {
     const payload = {
       sub: user.id,
       email: user.email,
+      name: user.name,
       tenantId: user.tenantId,
       'https://hasura.io/jwt/claims': {
         'x-hasura-default-role': 'user',
@@ -96,7 +102,13 @@ export class AuthService {
     return {
       access_token: token,
       id_token: result.getIdToken().getJwtToken(),
-      user: { id: user.id, email: user.email, tenantId: user.tenantId },
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        tenantId: user.tenantId,
+        tenant: user.tenant,
+      },
     };
   }
 

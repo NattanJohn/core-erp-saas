@@ -13,7 +13,7 @@ export class UsersController {
   @Post()
   @ApiOperation({ summary: 'Cria um novo utilizador vinculado a um tenant' })
   create(@Body() createUserDto: CreateUserDto) {
-    return this.usersService.create(createUserDto);
+    return this.usersService.createUser(createUserDto);
   }
 
   @Get('tenant/:tenantId')

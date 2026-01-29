@@ -1,18 +1,48 @@
-import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
+import { Body, Controller, Post, HttpCode, HttpStatus } from '@nestjs/common';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
 
-@ApiTags('auth')
+export interface LoginResponse {
+  access_token: string;
+  id_token: string;
+  user: {
+    id: string;
+    email: string;
+    tenantId: string;
+  };
+}
+
+@ApiTags('auth') // Organiza no Swagger
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(private readonly authService: AuthService) {}
 
-  @HttpCode(HttpStatus.OK)
+  @Post('register')
+  @ApiOperation({
+    summary: 'Cria uma nova conta de empresa e usuário administrador',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Usuário e empresa criados com sucesso.',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Dados inválidos ou erro no Cognito.',
+  })
+  async register(@Body() registerDto: RegisterDto) {
+    return this.authService.register(registerDto);
+  }
+
   @Post('login')
-  @ApiOperation({ summary: 'Realiza o login e retorna o token JWT' })
-  // O segredo está aqui: troque o tipo para LoginDto
-  signIn(@Body() loginDto: LoginDto) {
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Realiza o login e retorna os tokens e claims do Hasura',
+  })
+  @ApiResponse({ status: 200, description: 'Login bem-sucedido.' })
+  @ApiResponse({ status: 401, description: 'Credenciais inválidas.' })
+  async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto.email, loginDto.password);
   }
 }

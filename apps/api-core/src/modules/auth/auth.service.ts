@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
 import {
@@ -8,6 +12,18 @@ import {
   IAuthenticationCallback,
   CognitoUserSession,
 } from 'amazon-cognito-identity-js';
+import { RegisterDto } from './dto/register.dto';
+import { CognitoUserAttribute } from 'amazon-cognito-identity-js';
+
+export interface LoginResponse {
+  access_token: string;
+  id_token: string;
+  user: {
+    id: string;
+    email: string;
+    tenantId: string;
+  };
+}
 
 @Injectable()
 export class AuthService {
@@ -30,7 +46,7 @@ export class AuthService {
     });
   }
 
-  async login(email: string, pass: string): Promise<any> {
+  async login(email: string, pass: string): Promise<LoginResponse> {
     return new Promise((resolve, reject) => {
       const authenticationDetails = new AuthenticationDetails({
         Username: email,
@@ -81,5 +97,56 @@ export class AuthService {
       id_token: result.getIdToken().getJwtToken(),
       user: { id: user.id, email: user.email, tenantId: user.tenantId },
     };
+  }
+
+  async register(data: RegisterDto) {
+    const { email, password, name, companyName } = data;
+
+    const tenant = await this.usersService.createTenant(companyName);
+
+    return new Promise((resolve, reject) => {
+      const attributeList: CognitoUserAttribute[] = [
+        new CognitoUserAttribute({ Name: 'name', Value: name }),
+        new CognitoUserAttribute({ Name: 'custom:tenantId', Value: tenant.id }),
+      ];
+
+      this.userPool.signUp(
+        email,
+        password,
+        attributeList,
+        [],
+        (err, result) => {
+          if (err) {
+            return reject(
+              new BadRequestException(err.message || 'Erro no Cognito'),
+            );
+          }
+
+          void (async () => {
+            try {
+              const user = await this.usersService.createUser({
+                email,
+                name,
+                tenantId: tenant.id,
+                role: 'admin',
+              });
+
+              resolve({
+                message:
+                  'Registro realizado com sucesso! Verifique seu e-mail.',
+                userId: user.id,
+                tenantId: tenant.id,
+                cognitoSub: result?.userSub,
+              });
+            } catch (dbError: any) {
+              // CORREÇÃO: Garante que o dbError seja um objeto de Erro
+              reject(
+                dbError instanceof Error ? dbError : new Error(String(dbError)),
+              );
+            }
+          })();
+        },
+      );
+    });
   }
 }

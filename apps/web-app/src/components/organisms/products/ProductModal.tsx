@@ -8,9 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Pencil, Loader2 } from "lucide-react";
-import { useCategories } from "@/hooks/categories/use-categories";
-import { useCreateProduct } from "@/hooks/products/use-create-product";
-import { useUpdateProduct } from "@/hooks/products/use-update-product";
+import { useGetCategories } from "@/hooks/categories/get-categories";
+import { useCreateProduct } from "@/hooks/products/create-product";
+import { useUpdateProduct } from "@/hooks/products/update-product";
 import { Textarea } from "@/components/ui/textarea";
 
 // 1. Tipagem para o formulário
@@ -42,11 +42,9 @@ export function ProductModal({ product }: ProductModalProps) {
   const [open, setOpen] = useState(false);
   const isEdit = !!product;
 
-  const { data: categoriesData } = useCategories();
+  const { data: categoriesData } = useGetCategories();
   const { mutate: create, isPending: creating } = useCreateProduct();
   const { mutate: update, isPending: updating } = useUpdateProduct();
-
-  // Aplicando a tipagem no useForm
   const { register, handleSubmit, reset, setValue } = useForm<ProductFormValues>({
     defaultValues: {
       name: "",
@@ -170,7 +168,6 @@ export function ProductModal({ product }: ProductModalProps) {
               </Select>
             </div>
           </div>
-
           <Button type="submit" className="w-full" disabled={creating || updating}>
             {creating || updating ? (
               <Loader2 className="animate-spin h-4 w-4" />

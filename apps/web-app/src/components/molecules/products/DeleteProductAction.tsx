@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Trash2, Loader2 } from "lucide-react";
-import { useDeleteProduct } from "@/hooks/products/use-delete-product";
+import { useDeleteProduct } from "@/hooks/products/delete-product";
 
 interface DeleteProductActionProps {
   productId: string;
@@ -46,7 +46,7 @@ export function DeleteProductAction({ productId, productName }: DeleteProductAct
           <AlertDialogCancel disabled={isPending}>Cancelar</AlertDialogCancel>
           <AlertDialogAction
             onClick={(e) => {
-              e.preventDefault(); // Evita fechar o modal antes da hora se quiser
+              e.preventDefault();
               deleteProduct(productId);
             }}
             className="bg-red-600 hover:bg-red-700 text-white"

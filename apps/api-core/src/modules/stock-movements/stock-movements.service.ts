@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, EntityManager } from 'typeorm';
 import { StockMovement } from './entities/stock-movement.entity';
 import { Product } from '../products/entities/product.entity';
 import { CreateStockMovementDto } from './dto/create-stock-movement.dto';
@@ -14,45 +14,50 @@ export class StockMovementsService {
     private readonly productRepository: Repository<Product>,
     private dataSource: DataSource,
   ) {}
-
   async create(dto: CreateStockMovementDto, tenantId: string) {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
-      // 1. Verificar se o produto existe
-      const product = await queryRunner.manager.findOne(Product, {
-        where: { id: dto.productId, tenantId },
-      });
-
-      if (!product) {
-        throw new NotFoundException('Produto não encontrado');
-      }
-
-      // 2. Atualizar a quantidade no produto (In = Soma, Out = Subtrai)
-      if (dto.type === 'in') {
-        product.stock_quantity += dto.quantity;
-      } else {
-        product.stock_quantity -= dto.quantity;
-      }
-      await queryRunner.manager.save(product);
-
-      // 3. Gravar o registro no histórico
-      const movement = queryRunner.manager.create(StockMovement, {
-        ...dto,
+      const result = await this.createWithManager(
+        queryRunner.manager,
+        dto,
         tenantId,
-      });
-      const savedMovement = await queryRunner.manager.save(movement);
-
+      );
       await queryRunner.commitTransaction();
-      return savedMovement;
+      return result;
     } catch (err) {
       await queryRunner.rollbackTransaction();
       throw err;
     } finally {
       await queryRunner.release();
     }
+  }
+
+  async createWithManager(
+    manager: EntityManager,
+    dto: CreateStockMovementDto,
+    tenantId: string,
+  ) {
+    const product = await manager.findOne(Product, {
+      where: { id: dto.productId, tenantId },
+    });
+
+    if (!product) throw new NotFoundException('Produto não encontrado');
+
+    if (dto.type === 'in') {
+      product.stock_quantity += dto.quantity;
+    } else {
+      product.stock_quantity -= dto.quantity;
+    }
+    await manager.save(product);
+
+    const movement = manager.create(StockMovement, {
+      ...dto,
+      tenantId,
+    });
+    return manager.save(movement);
   }
 
   findAll(productId: string, tenantId: string) {
